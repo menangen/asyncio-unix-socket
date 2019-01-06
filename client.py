@@ -1,15 +1,26 @@
-import asyncio
+from asyncio import coroutine, get_event_loop, open_unix_connection, sleep, CancelledError
+import signal
 
 
-@asyncio.coroutine
-async def unix_client():
+@coroutine
+async def task(loop):
+    try:
+        while True:
+            print("Running")
+            await sleep(1, loop=loop)
+    except CancelledError:
+        print("Cancelled")
+
+if __name__ == '__main__':
+
+    loop = get_event_loop()
     print("Creating event loop...")
-    loop = asyncio.get_running_loop()
 
     try:
-        # Create a pair of connected sockets.
-        reader_sock, writer_sock = await asyncio.open_unix_connection(path="/tmp/gameserver", loop=loop)
+        client = open_unix_connection(path="/tmp/gameserver", loop=loop)
         print("Open unix socket with Client.")
+
+        reader_sock, writer_sock = loop.run_until_complete(client)
 
         writer_sock.write(bytes(
             "menangen",
@@ -21,4 +32,13 @@ async def unix_client():
     except ConnectionRefusedError:
         print("No socket opened by server")
 
-asyncio.run(unix_client())
+    def ask_exit():
+        print("Got signal exit")
+        loop.stop()
+
+    for signame in {'SIGINT', 'SIGTERM'}:
+        loop.add_signal_handler(getattr(signal, signame), ask_exit)
+
+    server = loop.create_task(task(loop))
+
+    loop.run_forever()
