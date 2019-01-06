@@ -1,44 +1,40 @@
-from asyncio import coroutine, get_event_loop, open_unix_connection, sleep, CancelledError
-import signal
+from asyncio import coroutine, open_unix_connection, sleep
+from async_socket import UnixAsyncSocket
 
 
 @coroutine
-async def task(loop):
+async def write_socket(loop, byte_message):
     try:
-        while True:
-            print("Running")
-            await sleep(1, loop=loop)
-    except CancelledError:
-        print("Cancelled")
+        reader_sock, writer_sock = await open_unix_connection(path=UnixAsyncSocket.socket, loop=loop)
 
-if __name__ == '__main__':
-
-    loop = get_event_loop()
-    print("Creating event loop...")
-
-    try:
-        client = open_unix_connection(path="/tmp/gameserver", loop=loop)
         print("Open unix socket with Client.")
 
-        reader_sock, writer_sock = loop.run_until_complete(client)
-
-        writer_sock.write(bytes(
-            "menangen",
-            encoding="ascii"
-        ))
+        writer_sock.write(byte_message)
 
         writer_sock.close()
 
-    except ConnectionRefusedError:
-        print("No socket opened by server")
-
-    def ask_exit():
-        print("Got signal exit")
+        print("Data", byte_message, "sent, stopping loop")
         loop.stop()
 
-    for signame in {'SIGINT', 'SIGTERM'}:
-        loop.add_signal_handler(getattr(signal, signame), ask_exit)
+    except ConnectionRefusedError:
+        print("No socket opened by server")
+    except FileNotFoundError:
+        print("Socket is not exists")
 
-    server = loop.create_task(task(loop))
 
-    loop.run_forever()
+@coroutine
+async def check_task(loop, data):
+    while True:
+        loop.create_task(write_socket(loop, data))
+
+        await sleep(1, loop=loop)
+
+
+if __name__ == '__main__':
+    Socket = UnixAsyncSocket()
+
+    data_to_write = bytes(
+                "menangen",
+                encoding="ascii"
+            )
+    server = Socket.start_task(check_task, data_to_write)

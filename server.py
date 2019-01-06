@@ -1,5 +1,6 @@
-import signal
 from asyncio import coroutine, get_event_loop, start_unix_server
+
+from async_socket import UnixAsyncSocket
 
 
 @coroutine
@@ -13,19 +14,6 @@ async def handle(reader, writer):
 
 if __name__ == '__main__':
 
-    loop = get_event_loop()
-    print("Creating event loop...")
+    Socket = UnixAsyncSocket()
 
-    unix_server = start_unix_server(handle, path="/tmp/gameserver", loop=loop)
-    print("Open unix socket with Server.")
-
-    server = loop.run_until_complete(unix_server)
-
-    def ask_exit():
-        print("Got signal exit")
-        loop.stop()
-
-    for signame in {'SIGINT', 'SIGTERM'}:
-        loop.add_signal_handler(getattr(signal, signame), ask_exit)
-
-    loop.run_forever()
+    unix_server = Socket.start_server_task(start_unix_server, handle)
