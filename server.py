@@ -1,4 +1,4 @@
-from asyncio import coroutine, get_event_loop, start_unix_server
+from asyncio import coroutine, start_unix_server
 
 from async_socket import UnixAsyncSocket
 
