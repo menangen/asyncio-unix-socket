@@ -1,5 +1,6 @@
 from asyncio import coroutine, open_unix_connection, sleep
 from async_socket import UnixAsyncSocket
+import socket  # aiodns
 
 
 @coroutine
@@ -30,6 +31,18 @@ async def write_socket(loop, data):
 
 
 @coroutine
+async def dns(loop, hostname):
+    # resolver = aiodns.DNSResolver(loop=loop)
+    # result = await resolver.query(hostname, "A")
+    #
+    # print([record.host for record in result])
+    # native async DNS resolver
+    res = await loop.getaddrinfo(hostname, 80, proto=socket.IPPROTO_UDP)
+    for record in res:
+        print(record[4][0])
+
+
+@coroutine
 async def check_task(loop, message):
     data = {
         "counter": 0,
@@ -37,9 +50,10 @@ async def check_task(loop, message):
     }
 
     while True:
+        loop.create_task(dns(loop, "gameserver.novikova.us"))
         loop.create_task(write_socket(loop, data))
 
-        await sleep(1, loop=loop)
+        await sleep(15, loop=loop)
 
 
 if __name__ == '__main__':
